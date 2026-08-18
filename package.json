@@ -1,17 +1,16 @@
 {
-  "name": "voice-tracker-bot",
+  "name": "dashboard-bsn",
   "version": "1.0.0",
-  "description": "Discord bot untuk menghitung waktu voice channel, auto-role, dan leaderboard",
-  "main": "index.js",
+  "description": "Dashboard web untuk mengatur fitur bot Badan Statistik Nasional",
+  "main": "server.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node index.js",
-    "deploy-commands": "node deploy-commands.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "discord.js": "^14.15.3",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
     "dotenv": "^16.4.5",
-    "node-cron": "^3.0.3",
-    "express": "^4.19.2"
+    "pg": "^8.12.0"
   }
 }
