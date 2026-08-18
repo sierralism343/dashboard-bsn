@@ -14,6 +14,27 @@ const {
 } = process.env;
 
 const ADMINISTRATOR_PERMISSION = 0x8; // bit permission Administrator di Discord
+const BOT_INTERNAL_URL = process.env.BOT_INTERNAL_URL; // contoh: http://voicetrckbsn.railway.internal:4000
+const DASHBOARD_API_SECRET = process.env.DASHBOARD_API_SECRET;
+
+// Helper buat manggil API internal bot
+async function callBotApi(path, options = {}) {
+  const response = await fetch(`${BOT_INTERNAL_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': DASHBOARD_API_SECRET,
+      ...(options.headers || {}),
+    },
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`Bot API error ${response.status}: ${text}`);
+  }
+  return response.json();
+}
+
+app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
   secret: SESSION_SECRET || 'ganti-ini-di-env',
@@ -154,17 +175,207 @@ app.get('/dashboard', requireLogin, async (req, res) => {
   `));
 });
 
-// ===== Halaman pengaturan per-server (placeholder, dikembangkan bertahap) =====
-app.get('/server/:guildId', requireLogin, (req, res) => {
+// Middleware: pastikan user beneran admin di guild ini (bukan asal tebak guildId di URL)
+function requireGuildAdmin(req, res, next) {
   const { guildId } = req.params;
+  const isAdmin = (req.session.adminGuilds || []).some(g => g.id === guildId);
+  if (!isAdmin) return res.status(403).send(renderPage('<p>Kamu tidak punya akses admin di server ini.</p>'));
+  next();
+}
+
+function channelOptions(channels, selectedId) {
+  const blank = `<option value="">-- Belum diatur --</option>`;
+  const opts = channels.map(c =>
+    `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>#${c.name}</option>`
+  ).join('');
+  return blank + opts;
+}
+
+function roleOptions(roles) {
+  return roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+}
+
+// ===== Halaman pengaturan per-server =====
+app.get('/server/:guildId', requireLogin, requireGuildAdmin, async (req, res) => {
+  const { guildId } = req.params;
+  let info;
+  try {
+    info = await callBotApi(`/api/guilds/${guildId}`);
+  } catch (err) {
+    console.error('Gagal ambil data dari bot API:', err.message);
+    return res.send(renderPage(`
+      <div class="topbar"><a href="/dashboard">&larr; Kembali</a></div>
+      <p>Gagal konek ke bot. Pastikan bot online dan BOT_INTERNAL_URL / DASHBOARD_API_SECRET sudah benar.</p>
+    `));
+  }
+
+  const { guildName, settings, textChannels, roles } = info;
+
+  const voiceRoleRows = settings.roles.map(r => `
+    <div class="row-item">
+      <span>${roles.find(x => x.id === r.roleId)?.name || r.roleId} — min ${r.minutes} menit</span>
+      <form method="POST" action="/server/${guildId}/voice-roles/${r.roleId}/delete">
+        <button class="btn-danger" type="submit">Hapus</button>
+      </form>
+    </div>
+  `).join('') || '<p class="muted">Belum ada aturan.</p>';
+
+  const inviteRoleRows = settings.inviteRoles.map(r => `
+    <div class="row-item">
+      <span>${roles.find(x => x.id === r.roleId)?.name || r.roleId} — min ${r.count} invite</span>
+      <form method="POST" action="/server/${guildId}/invite-roles/${r.roleId}/delete">
+        <button class="btn-danger" type="submit">Hapus</button>
+      </form>
+    </div>
+  `).join('') || '<p class="muted">Belum ada aturan.</p>';
+
+  function topVoiceRow(tipe, label, ranks) {
+    return [1, 2, 3].map(peringkat => {
+      const slot = ranks[peringkat - 1];
+      const currentRoleName = slot.roleId ? (roles.find(x => x.id === slot.roleId)?.name || slot.roleId) : '(belum diatur)';
+      return `
+        <form method="POST" action="/server/${guildId}/top-voice-roles" class="row-item">
+          <input type="hidden" name="tipe" value="${tipe}" />
+          <input type="hidden" name="peringkat" value="${peringkat}" />
+          <span>${label} — Peringkat ${peringkat}: <strong>${currentRoleName}</strong></span>
+          <select name="roleId">
+            <option value="">-- Pilih role --</option>
+            ${roleOptions(roles)}
+          </select>
+          <button class="btn-small" type="submit">Simpan</button>
+        </form>
+      `;
+    }).join('');
+  }
+
   res.send(renderPage(`
     <div class="topbar">
       <a href="/dashboard">&larr; Kembali</a>
     </div>
-    <h2>Pengaturan Server</h2>
-    <p>Guild ID: ${guildId}</p>
-    <p><em>Halaman pengaturan detail (leaderboard, invite roles, dll) akan ditambahkan di tahap berikutnya.</em></p>
+    <h2>Pengaturan: ${guildName}</h2>
+
+    <div class="card">
+      <h3>Channel Utama</h3>
+      <form method="POST" action="/server/${guildId}/channels">
+        <label>Channel Leaderboard (auto-post 4x sehari)</label>
+        <select name="leaderboardChannelId">${channelOptions(textChannels, settings.leaderboardChannelId)}</select>
+
+        <label>Jumlah ditampilkan per kategori</label>
+        <input type="number" name="leaderboardLimit" min="1" max="25" value="${settings.leaderboardLimit || 10}" />
+
+        <label>Channel Invite Log (warga baru/keluar)</label>
+        <select name="inviteChannelId">${channelOptions(textChannels, settings.inviteChannelId)}</select>
+
+        <label>Channel Pengumuman Pencapaian</label>
+        <select name="achievementChannelId">${channelOptions(textChannels, settings.achievementChannelId)}</select>
+
+        <button class="btn" type="submit">Simpan Channel</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Auto-Role Voice (berdasarkan menit)</h3>
+      ${voiceRoleRows}
+      <form method="POST" action="/server/${guildId}/voice-roles" class="row-item">
+        <select name="roleId" required><option value="">-- Pilih role --</option>${roleOptions(roles)}</select>
+        <input type="number" name="minutes" placeholder="Menit" min="1" required />
+        <button class="btn-small" type="submit">Tambah</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Auto-Role Invite (berdasarkan jumlah invite)</h3>
+      ${inviteRoleRows}
+      <form method="POST" action="/server/${guildId}/invite-roles" class="row-item">
+        <select name="roleId" required><option value="">-- Pilih role --</option>${roleOptions(roles)}</select>
+        <input type="number" name="count" placeholder="Jumlah invite" min="1" required />
+        <button class="btn-small" type="submit">Tambah</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Role Top Voice (Peringkat 1/2/3)</h3>
+      <p class="muted">Voice Stay</p>
+      ${topVoiceRow('stay', 'Voice Stay', settings.topVoiceStayRanks)}
+      <p class="muted">Voice Aktif</p>
+      ${topVoiceRow('aktif', 'Voice Aktif', settings.topVoiceActiveRanks)}
+    </div>
   `));
+});
+
+app.post('/server/:guildId/channels', requireLogin, requireGuildAdmin, async (req, res) => {
+  const { guildId } = req.params;
+  try {
+    await callBotApi(`/api/guilds/${guildId}/channels`, {
+      method: 'POST',
+      body: JSON.stringify(req.body),
+    });
+  } catch (err) {
+    console.error('Gagal simpan channel settings:', err.message);
+  }
+  res.redirect(`/server/${guildId}`);
+});
+
+app.post('/server/:guildId/voice-roles', requireLogin, requireGuildAdmin, async (req, res) => {
+  const { guildId } = req.params;
+  try {
+    await callBotApi(`/api/guilds/${guildId}/voice-roles`, {
+      method: 'POST',
+      body: JSON.stringify(req.body),
+    });
+  } catch (err) {
+    console.error('Gagal tambah voice role:', err.message);
+  }
+  res.redirect(`/server/${guildId}`);
+});
+
+app.post('/server/:guildId/voice-roles/:roleId/delete', requireLogin, requireGuildAdmin, async (req, res) => {
+  const { guildId, roleId } = req.params;
+  try {
+    await callBotApi(`/api/guilds/${guildId}/voice-roles/${roleId}`, { method: 'DELETE' });
+  } catch (err) {
+    console.error('Gagal hapus voice role:', err.message);
+  }
+  res.redirect(`/server/${guildId}`);
+});
+
+app.post('/server/:guildId/invite-roles', requireLogin, requireGuildAdmin, async (req, res) => {
+  const { guildId } = req.params;
+  try {
+    await callBotApi(`/api/guilds/${guildId}/invite-roles`, {
+      method: 'POST',
+      body: JSON.stringify(req.body),
+    });
+  } catch (err) {
+    console.error('Gagal tambah invite role:', err.message);
+  }
+  res.redirect(`/server/${guildId}`);
+});
+
+app.post('/server/:guildId/invite-roles/:roleId/delete', requireLogin, requireGuildAdmin, async (req, res) => {
+  const { guildId, roleId } = req.params;
+  try {
+    await callBotApi(`/api/guilds/${guildId}/invite-roles/${roleId}`, { method: 'DELETE' });
+  } catch (err) {
+    console.error('Gagal hapus invite role:', err.message);
+  }
+  res.redirect(`/server/${guildId}`);
+});
+
+app.post('/server/:guildId/top-voice-roles', requireLogin, requireGuildAdmin, async (req, res) => {
+  const { guildId } = req.params;
+  const { tipe, peringkat, roleId } = req.body;
+  if (roleId) {
+    try {
+      await callBotApi(`/api/guilds/${guildId}/top-voice-roles`, {
+        method: 'POST',
+        body: JSON.stringify({ tipe, peringkat: parseInt(peringkat), roleId }),
+      });
+    } catch (err) {
+      console.error('Gagal simpan top voice role:', err.message);
+    }
+  }
+  res.redirect(`/server/${guildId}`);
 });
 
 app.get('/logout', (req, res) => {
@@ -221,6 +432,46 @@ function renderPage(bodyHtml) {
     .server-card img { width: 48px; height: 48px; border-radius: 50%; }
     .server-info { display: flex; justify-content: space-between; align-items: center; flex: 1; color: #fff; }
     .badge-warn { color: #ff8a5c; font-size: 13px; }
+
+    .card {
+      max-width: 700px;
+      margin: 0 auto 20px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(244,212,122,0.3);
+      border-radius: 10px;
+      padding: 16px 20px;
+    }
+    .card h3 { margin-top: 0; color: #fff; }
+    .card label { display: block; margin: 12px 0 4px; font-size: 13px; color: #cbd5e1; }
+    .card select, .card input[type=number], .card input[type=text] {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(244,212,122,0.3);
+      background: #0b1f38;
+      color: #fff;
+    }
+    .row-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 14px;
+    }
+    .row-item select { flex: 1; }
+    .muted { color: #94a3b8; font-size: 13px; margin: 10px 0 4px; }
+    .btn-danger {
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
