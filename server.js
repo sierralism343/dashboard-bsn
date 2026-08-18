@@ -191,8 +191,8 @@ function channelOptions(channels, selectedId) {
   return blank + opts;
 }
 
-function roleOptions(roles) {
-  return roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+function roleOptions(roles, selectedId) {
+  return roles.map(r => `<option value="${r.id}" ${r.id === selectedId ? 'selected' : ''}>${r.name}</option>`).join('');
 }
 
 // ===== Halaman pengaturan per-server =====
@@ -240,7 +240,7 @@ app.get('/server/:guildId', requireLogin, requireGuildAdmin, async (req, res) =>
           <span>${label} — Peringkat ${peringkat}: <strong>${currentRoleName}</strong></span>
           <select name="roleId">
             <option value="">-- Pilih role --</option>
-            ${roleOptions(roles)}
+            ${roleOptions(roles, slot.roleId)}
           </select>
           <button class="btn-small" type="submit">Simpan</button>
         </form>
