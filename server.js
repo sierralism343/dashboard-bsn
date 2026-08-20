@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const session = require('express-session');
 
 const app = express();
@@ -61,6 +62,11 @@ app.get('/', (req, res) => {
       <a class="btn" href="/login">Login dengan Discord</a>
     </div>
   `));
+});
+
+// ===== Halaman Privacy Policy publik (untuk App Verification & Privileged Intent review) =====
+app.get('/privacy', (req, res) => {
+  res.sendFile(path.join(__dirname, 'privacy.html'));
 });
 
 // ===== Mulai login: redirect ke halaman authorize Discord =====
