@@ -1,10 +1,13 @@
 require('dotenv').config();
 const express = require('express');
-const path = require('path');
 const session = require('express-session');
+const nodePath = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// File statis (logo, dsb) disajikan dari folder /public, contoh: /public/logo.png
+app.use('/public', express.static(nodePath.join(__dirname, 'public')));
 
 const {
   DISCORD_CLIENT_ID,
@@ -52,21 +55,23 @@ function requireLogin(req, res, next) {
   next();
 }
 
-// ===== Halaman utama =====
+// Izin bot yang diminta saat invite: Manage Roles, View Channels, Send Messages,
+// Embed Links, Connect, Manage Server (dipakai fitur invite tracker) -- lihat PANDUAN.md
+const BOT_INVITE_PERMISSIONS = '269503520';
+
+function buildInviteUrl() {
+  const params = new URLSearchParams({
+    client_id: DISCORD_CLIENT_ID,
+    permissions: BOT_INVITE_PERMISSIONS,
+    scope: 'bot applications.commands',
+  });
+  return `https://discord.com/api/oauth2/authorize?${params.toString()}`;
+}
+
+// ===== Halaman utama (landing page publik) =====
 app.get('/', (req, res) => {
   if (req.session.user) return res.redirect('/dashboard');
-  res.send(renderPage(`
-    <div class="hero">
-      <h1>Dashboard Badan Statistik Nasional</h1>
-      <p>Kelola pengaturan bot voice tracker & invite tracker langsung dari web, tanpa perlu hafal command.</p>
-      <a class="btn" href="/login">Login dengan Discord</a>
-    </div>
-  `));
-});
-
-// ===== Halaman Privacy Policy publik (untuk App Verification & Privileged Intent review) =====
-app.get('/privacy', (req, res) => {
-  res.sendFile(path.join(__dirname, 'privacy.html'));
+  res.send(renderLandingPage());
 });
 
 // ===== Mulai login: redirect ke halaman authorize Discord =====
@@ -482,6 +487,146 @@ function renderPage(bodyHtml) {
 </head>
 <body>
   ${bodyHtml}
+</body>
+</html>`;
+}
+
+// ===== Landing page publik: brand "Badan Statistik Nasional" (BSN) =====
+function renderLandingPage() {
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Badan Statistik Nasional — Dashboard Bot Discord</title>
+<meta name="description" content="BSN mencatat aktivitas voice dan undangan tiap member di server Discord kamu, lalu otomatis kasih role dan leaderboard.">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap');
+  :root {
+    --bg: #0a1128;
+    --card: #10173a;
+    --border: #232b52;
+    --text: #f5f2ea;
+    --text-dim: #9a958c;
+    --coral: #f0703c;
+    --gold: #c9a24b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.045) 1px, transparent 0);
+    background-size: 26px 26px;
+    min-height: 100vh;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 28px 24px 0;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo img { width: 38px; height: 38px; }
+  .logo-text {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+  }
+  .logo-text small {
+    display: block;
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-top: 1px;
+  }
+  nav { display: flex; gap: 34px; }
+  nav a { color: var(--text-dim); text-decoration: none; font-size: 14px; font-weight: 500; }
+  nav a:hover { color: var(--text); }
+  .login-btn {
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 8px 20px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  main { max-width: 760px; margin: 90px auto 0; text-align: center; padding: 0 24px; }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--coral);
+    font-size: 12px;
+    letter-spacing: 4px;
+    font-weight: 500;
+    margin-bottom: 24px;
+  }
+  h1 { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 52px; line-height: 1.15; letter-spacing: -0.5px; }
+  h1 .em { color: var(--coral); }
+  .subtitle { color: var(--text-dim); font-size: 16px; line-height: 1.65; max-width: 540px; margin: 24px auto 34px; }
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    margin: 0 auto 36px;
+    max-width: 560px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+  }
+  .stat { flex: 1; padding: 0 18px; }
+  .stat + .stat { border-left: 1px solid var(--border); }
+  .stat .num { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 500; color: var(--gold); }
+  .stat .label { font-size: 11px; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.3px; }
+  .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 90px; }
+  .btn { padding: 13px 26px; border-radius: 4px; font-weight: 600; font-size: 15px; text-decoration: none; display: inline-block; }
+  .btn-primary { background: var(--coral); color: #fff; }
+  .btn-secondary { background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,0.25); }
+  @media (max-width: 720px) {
+    nav { display: none; }
+    h1 { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <img src="/public/logo.png" alt="BSN">
+    <div class="logo-text">BADAN STATISTIK NASIONAL<small>SENSUS SETIAP SERVER DISCORD</small></div>
+  </div>
+  <nav>
+    <a href="/">Beranda</a>
+    <a href="#fitur">Fitur</a>
+    <a href="https://github.com" target="_blank" rel="noopener">Dokumentasi</a>
+  </nav>
+  <a href="/login" class="login-btn">Login</a>
+</header>
+
+<main>
+  <div class="eyebrow">SENSUS DIGITAL</div>
+  <h1>Setiap member,<br><span class="em">tercatat resmi.</span></h1>
+  <p class="subtitle">
+    BSN mencatat aktivitas voice dan undangan tiap member di server Discord kamu,
+    lalu otomatis kasih role dan leaderboard — satu bot, semua server.
+  </p>
+
+  <div class="stats-row">
+    <div class="stat"><div class="num">3</div><div class="label">SERVER TERDAFTAR</div></div>
+    <div class="stat"><div class="num">+62 SOCIETY</div><div class="label">RUBY UNIVERSE · BUXILIAN</div></div>
+    <div class="stat"><div class="num">24/7</div><div class="label">PENCATATAN AKTIF</div></div>
+  </div>
+
+  <div class="cta-row">
+    <a href="${buildInviteUrl()}" class="btn btn-primary">➕ Tambahkan ke Server</a>
+    <a href="/login" class="btn btn-secondary">Buka Dashboard</a>
+  </div>
+</main>
+
 </body>
 </html>`;
 }
