@@ -617,7 +617,6 @@ function renderLandingPage() {
 
   <div class="stats-row">
     <div class="stat"><div class="num">3</div><div class="label">SERVER TERDAFTAR</div></div>
-    <div class="stat"><div class="num">+62 SOCIETY</div><div class="label">RUBY UNIVERSE · BUXILIAN</div></div>
     <div class="stat"><div class="num">24/7</div><div class="label">PENCATATAN AKTIF</div></div>
   </div>
 
