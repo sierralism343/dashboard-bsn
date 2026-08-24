@@ -512,6 +512,7 @@ function renderLandingPage() {
     --gold: #c9a24b;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
   body {
     background: var(--bg);
     color: var(--text);
@@ -524,9 +525,9 @@ function renderLandingPage() {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    max-width: 1120px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 28px 24px 0;
+    padding: 28px clamp(24px, 4vw, 48px) 0;
   }
   .logo { display: flex; align-items: center; gap: 12px; }
   .logo img { width: 38px; height: 38px; }
@@ -557,38 +558,131 @@ function renderLandingPage() {
     font-weight: 600;
     text-decoration: none;
   }
-  main { max-width: 760px; margin: 90px auto 0; text-align: center; padding: 0 24px; }
+
+  .hero {
+    position: relative;
+    min-height: calc(100vh - 90px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 900px;
+    height: 900px;
+    transform: translate(-50%, -55%);
+    background: radial-gradient(circle, rgba(240,112,60,0.16) 0%, rgba(240,112,60,0) 60%);
+    pointer-events: none;
+  }
+  main {
+    position: relative;
+    max-width: 780px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 60px 24px;
+  }
   .eyebrow {
     font-family: 'JetBrains Mono', monospace;
     color: var(--coral);
-    font-size: 12px;
+    font-size: clamp(11px, 1vw, 13px);
     letter-spacing: 4px;
     font-weight: 500;
     margin-bottom: 24px;
   }
-  h1 { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 52px; line-height: 1.15; letter-spacing: -0.5px; }
+  h1 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: clamp(40px, 5.5vw, 64px);
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+  }
   h1 .em { color: var(--coral); }
-  .subtitle { color: var(--text-dim); font-size: 16px; line-height: 1.65; max-width: 540px; margin: 24px auto 34px; }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: clamp(15px, 1.3vw, 18px);
+    line-height: 1.65;
+    max-width: 600px;
+    margin: 26px auto 38px;
+  }
   .stats-row {
     display: flex;
     justify-content: center;
-    margin: 0 auto 36px;
+    margin: 0 auto 40px;
     max-width: 560px;
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
-    padding: 20px 0;
+    padding: 22px 0;
   }
   .stat { flex: 1; padding: 0 18px; }
   .stat + .stat { border-left: 1px solid var(--border); }
-  .stat .num { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 500; color: var(--gold); }
+  .stat .num { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 500; color: var(--gold); }
   .stat .label { font-size: 11px; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.3px; }
-  .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 90px; }
-  .btn { padding: 13px 26px; border-radius: 4px; font-weight: 600; font-size: 15px; text-decoration: none; display: inline-block; }
+  .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn { padding: 14px 28px; border-radius: 4px; font-weight: 600; font-size: 15px; text-decoration: none; display: inline-block; }
   .btn-primary { background: var(--coral); color: #fff; }
   .btn-secondary { background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,0.25); }
+  .scroll-hint {
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+  }
+
+  .features {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 90px clamp(24px, 4vw, 48px) 100px;
+  }
+  .features-head { text-align: center; margin-bottom: 48px; }
+  .features-head h2 { font-family: 'Oswald', sans-serif; font-size: clamp(26px, 3vw, 34px); font-weight: 600; }
+  .features-head p { color: var(--text-dim); margin-top: 10px; font-size: 15px; }
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feature-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 24px;
+    text-align: left;
+  }
+  .feature-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: rgba(240,112,60,0.15);
+    color: var(--coral);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+  .feature-card h3 { font-size: 16px; margin-bottom: 8px; }
+  .feature-card p { font-size: 13.5px; color: var(--text-dim); line-height: 1.6; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 28px clamp(24px, 4vw, 48px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  footer .logo-text { font-size: 12px; color: var(--text-dim); }
+
   @media (max-width: 720px) {
     nav { display: none; }
-    h1 { font-size: 36px; }
+    .feature-grid { grid-template-columns: 1fr; }
+    footer { flex-direction: column; gap: 10px; text-align: center; }
   }
 </style>
 </head>
@@ -607,24 +701,56 @@ function renderLandingPage() {
   <a href="/login" class="login-btn">Login</a>
 </header>
 
-<main>
-  <div class="eyebrow">SENSUS DIGITAL</div>
-  <h1>Setiap member,<br><span class="em">tercatat resmi.</span></h1>
-  <p class="subtitle">
-    BSN mencatat aktivitas voice dan undangan tiap member di server Discord kamu,
-    lalu otomatis kasih role dan leaderboard — satu bot, semua server.
-  </p>
+<section class="hero">
+  <main>
+    <div class="eyebrow">SENSUS DIGITAL</div>
+    <h1>Setiap member,<br><span class="em">tercatat resmi.</span></h1>
+    <p class="subtitle">
+      BSN mencatat aktivitas voice dan undangan tiap member di server Discord kamu,
+      lalu otomatis kasih role dan leaderboard — satu bot, semua server.
+    </p>
 
-  <div class="stats-row">
-    <div class="stat"><div class="num">3</div><div class="label">SERVER TERDAFTAR</div></div>
-    <div class="stat"><div class="num">24/7</div><div class="label">PENCATATAN AKTIF</div></div>
-  </div>
+    <div class="stats-row">
+      <div class="stat"><div class="num">3</div><div class="label">SERVER TERDAFTAR</div></div>
+      <div class="stat"><div class="num">24/7</div><div class="label">PENCATATAN AKTIF</div></div>
+    </div>
 
-  <div class="cta-row">
-    <a href="${buildInviteUrl()}" class="btn btn-primary">➕ Tambahkan ke Server</a>
-    <a href="/login" class="btn btn-secondary">Buka Dashboard</a>
+    <div class="cta-row">
+      <a href="${buildInviteUrl()}" class="btn btn-primary">➕ Tambahkan ke Server</a>
+      <a href="/login" class="btn btn-secondary">Buka Dashboard</a>
+    </div>
+  </main>
+  <a href="#fitur" class="scroll-hint">↓ LIHAT FITUR</a>
+</section>
+
+<section class="features" id="fitur">
+  <div class="features-head">
+    <h2>Satu bot, tiga hal yang dicatat otomatis</h2>
+    <p>Semua bisa diatur lewat command Discord atau dashboard web ini, tanpa perlu coding.</p>
   </div>
-</main>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🎙️</div>
+      <h3>Voice Tracker</h3>
+      <p>Hitung waktu stay & waktu aktif (mic/deafen terbuka) tiap member di voice channel, real-time.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📨</div>
+      <h3>Invite Tracker</h3>
+      <p>Lacak siapa mengundang siapa, kirim pesan member baru & keluar otomatis ke channel yang kamu atur.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏆</div>
+      <h3>Auto-Role & Leaderboard</h3>
+      <p>Role otomatis berdasarkan menit voice atau jumlah invite, plus role khusus Top 1/2/3 yang berpindah otomatis.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="logo-text">© Badan Statistik Nasional</div>
+  <div>Dibuat untuk komunitas Discord</div>
+</footer>
 
 </body>
 </html>`;
